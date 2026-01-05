@@ -18,14 +18,6 @@ interface CartItem extends Product {
   quantity: number;
 }
 
-interface Order {
-  id: string;
-  date: string;
-  status: 'pending' | 'shipped' | 'delivered';
-  total: number;
-  items: CartItem[];
-}
-
 interface Notification {
   id: string;
   type: 'order' | 'delivery';
@@ -35,9 +27,11 @@ interface Notification {
 }
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState('catalog');
+  const [activeView, setActiveView] = useState<'catalog' | 'orders' | 'profile'>('catalog');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: '1',
@@ -110,26 +104,6 @@ const Index = () => {
     }
   ];
 
-  const orders: Order[] = [
-    {
-      id: '12345',
-      date: '20.01.2026',
-      status: 'shipped',
-      total: 58980,
-      items: [
-        { ...products[0], quantity: 1 },
-        { ...products[1], quantity: 1 }
-      ]
-    },
-    {
-      id: '12344',
-      date: '15.01.2026',
-      status: 'delivered',
-      total: 15990,
-      items: [{ ...products[2], quantity: 1 }]
-    }
-  ];
-
   const addToCart = (product: Product) => {
     const existingItem = cart.find(item => item.id === product.id);
     if (existingItem) {
@@ -139,12 +113,10 @@ const Index = () => {
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
-    toast.success(`${product.name} добавлен в корзину`);
   };
 
   const removeFromCart = (productId: number) => {
     setCart(cart.filter(item => item.id !== productId));
-    toast.info('Товар удален из корзины');
   };
 
   const updateQuantity = (productId: number, change: number) => {
@@ -169,18 +141,9 @@ const Index = () => {
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const getStatusBadge = (status: Order['status']) => {
-    const variants = {
-      pending: { label: 'В обработке', variant: 'secondary' as const },
-      shipped: { label: 'Отправлен', variant: 'default' as const },
-      delivered: { label: 'Доставлен', variant: 'outline' as const }
-    };
-    return variants[status];
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
@@ -192,156 +155,195 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Icon name="Bell" className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-[400px] sm:w-[540px]">
-                <SheetHeader>
-                  <SheetTitle>Уведомления</SheetTitle>
-                </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-8rem)] mt-6">
-                  <div className="space-y-3">
-                    {notifications.map((notif) => (
-                      <Card
-                        key={notif.id}
-                        className={`cursor-pointer transition-all hover:shadow-md ${!notif.read ? 'border-primary' : ''}`}
-                        onClick={() => markNotificationRead(notif.id)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex gap-3">
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${notif.type === 'delivery' ? 'bg-primary/10' : 'bg-accent/10'}`}>
-                              <Icon name={notif.type === 'delivery' ? 'Truck' : 'Package'} className="h-5 w-5" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{notif.message}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
-                            </div>
-                            {!notif.read && (
-                              <div className="h-2 w-2 rounded-full bg-primary" />
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="relative"
+              onClick={() => setShowNotifications(!showNotifications)}
+            >
+              <Icon name="Bell" className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Button>
 
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Icon name="ShoppingCart" className="h-5 w-5" />
-                  {cart.length > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                      {cart.length}
-                    </Badge>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-[400px] sm:w-[540px]">
-                <SheetHeader>
-                  <SheetTitle>Корзина</SheetTitle>
-                </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-12rem)] mt-6">
-                  {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 text-center">
-                      <Icon name="ShoppingCart" className="h-16 w-16 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">Корзина пуста</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {cart.map((item) => (
-                        <Card key={item.id} className="overflow-hidden">
-                          <CardContent className="p-4">
-                            <div className="flex gap-4">
-                              <img src={item.image} alt={item.name} className="h-20 w-20 rounded-lg object-cover" />
-                              <div className="flex-1">
-                                <h4 className="font-medium">{item.name}</h4>
-                                <p className="text-sm text-muted-foreground">{item.price.toLocaleString('ru-RU')} ₽</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Button
-                                    size="icon"
-                                    variant="outline"
-                                    className="h-7 w-7"
-                                    onClick={() => updateQuantity(item.id, -1)}
-                                  >
-                                    <Icon name="Minus" className="h-3 w-3" />
-                                  </Button>
-                                  <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
-                                  <Button
-                                    size="icon"
-                                    variant="outline"
-                                    className="h-7 w-7"
-                                    onClick={() => updateQuantity(item.id, 1)}
-                                  >
-                                    <Icon name="Plus" className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 ml-auto text-destructive"
-                                    onClick={() => removeFromCart(item.id)}
-                                  >
-                                    <Icon name="Trash2" className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-                {cart.length > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 border-t bg-background p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-lg font-semibold">Итого:</span>
-                      <span className="text-2xl font-bold text-primary">{cartTotal.toLocaleString('ru-RU')} ₽</span>
-                    </div>
-                    <Button className="w-full" size="lg">
-                      Оформить заказ
-                    </Button>
-                  </div>
-                )}
-              </SheetContent>
-            </Sheet>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="relative"
+              onClick={() => setShowCart(!showCart)}
+            >
+              <Icon name="ShoppingCart" className="h-5 w-5" />
+              {cart.length > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                  {cart.length}
+                </Badge>
+              )}
+            </Button>
           </div>
         </div>
       </header>
 
+      {showCart && (
+        <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowCart(false)}>
+          <div 
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-background shadow-xl animate-slide-in-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Корзина</h2>
+                <Button variant="ghost" size="icon" onClick={() => setShowCart(false)}>
+                  <Icon name="X" className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="overflow-y-auto h-[calc(100vh-200px)] p-6">
+              {cart.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <Icon name="ShoppingCart" className="h-16 w-16 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Корзина пуста</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {cart.map((item) => (
+                    <Card key={item.id}>
+                      <CardContent className="p-4">
+                        <div className="flex gap-4">
+                          <img src={item.image} alt={item.name} className="h-20 w-20 rounded-lg object-cover" />
+                          <div className="flex-1">
+                            <h4 className="font-medium">{item.name}</h4>
+                            <p className="text-sm text-muted-foreground">{item.price.toLocaleString('ru-RU')} ₽</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7"
+                                onClick={() => updateQuantity(item.id, -1)}
+                              >
+                                <Icon name="Minus" className="h-3 w-3" />
+                              </Button>
+                              <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7"
+                                onClick={() => updateQuantity(item.id, 1)}
+                              >
+                                <Icon name="Plus" className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 ml-auto text-destructive"
+                                onClick={() => removeFromCart(item.id)}
+                              >
+                                <Icon name="Trash2" className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 border-t bg-background p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-lg font-semibold">Итого:</span>
+                  <span className="text-2xl font-bold text-primary">{cartTotal.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                <Button className="w-full" size="lg">
+                  Оформить заказ
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showNotifications && (
+        <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowNotifications(false)}>
+          <div 
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-background shadow-xl animate-slide-in-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Уведомления</h2>
+                <Button variant="ghost" size="icon" onClick={() => setShowNotifications(false)}>
+                  <Icon name="X" className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-3">
+              {notifications.map((notif) => (
+                <Card
+                  key={notif.id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${!notif.read ? 'border-primary' : ''}`}
+                  onClick={() => markNotificationRead(notif.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex gap-3">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${notif.type === 'delivery' ? 'bg-primary/10' : 'bg-accent/10'}`}>
+                        <Icon name={notif.type === 'delivery' ? 'Truck' : 'Package'} className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{notif.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                      </div>
+                      {!notif.read && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="container py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[600px] mx-auto">
-            <TabsTrigger value="catalog" className="gap-2">
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex rounded-lg border p-1 bg-muted">
+            <Button
+              variant={activeView === 'catalog' ? 'default' : 'ghost'}
+              onClick={() => setActiveView('catalog')}
+              className="gap-2"
+            >
               <Icon name="Store" className="h-4 w-4" />
               Каталог
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-2">
+            </Button>
+            <Button
+              variant={activeView === 'orders' ? 'default' : 'ghost'}
+              onClick={() => setActiveView('orders')}
+              className="gap-2"
+            >
               <Icon name="Package" className="h-4 w-4" />
               Заказы
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-2">
+            </Button>
+            <Button
+              variant={activeView === 'profile' ? 'default' : 'ghost'}
+              onClick={() => setActiveView('profile')}
+              className="gap-2"
+            >
               <Icon name="User" className="h-4 w-4" />
               Профиль
-            </TabsTrigger>
-            <TabsTrigger value="favorites" className="gap-2">
-              <Icon name="Heart" className="h-4 w-4" />
-              Избранное
-            </TabsTrigger>
-          </TabsList>
+            </Button>
+          </div>
+        </div>
 
-          <TabsContent value="catalog" className="space-y-6 animate-fade-in">
-            <div className="relative">
+        {activeView === 'catalog' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="relative max-w-2xl mx-auto">
               <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 placeholder="Поиск товаров..."
@@ -387,60 +389,65 @@ const Index = () => {
                 </Card>
               ))}
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="orders" className="space-y-4 animate-fade-in">
+        {activeView === 'orders' && (
+          <div className="space-y-4 animate-fade-in max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold mb-6">Мои заказы</h2>
-            {orders.map((order) => (
-              <Card key={order.id} className="overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">Заказ #{order.id}</h3>
-                      <p className="text-sm text-muted-foreground">{order.date}</p>
-                    </div>
-                    <Badge {...getStatusBadge(order.status)} className="text-sm px-3 py-1">
-                      {getStatusBadge(order.status).label}
-                    </Badge>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg">Заказ #12345</h3>
+                    <p className="text-sm text-muted-foreground">20.01.2026</p>
                   </div>
-                  <Separator className="my-4" />
-                  <div className="space-y-3">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-4">
-                        <img src={item.image} alt={item.name} className="h-16 w-16 rounded-lg object-cover" />
-                        <div className="flex-1">
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">Количество: {item.quantity}</p>
-                        </div>
-                        <p className="font-semibold">{(item.price * item.quantity).toLocaleString('ru-RU')} ₽</p>
-                      </div>
-                    ))}
-                  </div>
-                  <Separator className="my-4" />
+                  <Badge className="text-sm px-3 py-1">Отправлен</Badge>
+                </div>
+                <div className="border-t pt-4">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-lg">Итого:</span>
-                    <span className="text-xl font-bold text-primary">{order.total.toLocaleString('ru-RU')} ₽</span>
+                    <span className="text-xl font-bold text-primary">58 980 ₽</span>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
+                </div>
+              </CardContent>
+            </Card>
 
-          <TabsContent value="profile" className="animate-fade-in">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg">Заказ #12344</h3>
+                    <p className="text-sm text-muted-foreground">15.01.2026</p>
+                  </div>
+                  <Badge variant="outline" className="text-sm px-3 py-1">Доставлен</Badge>
+                </div>
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-lg">Итого:</span>
+                    <span className="text-xl font-bold text-primary">15 990 ₽</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeView === 'profile' && (
+          <div className="animate-fade-in">
             <Card className="max-w-2xl mx-auto">
               <CardContent className="p-8">
                 <div className="flex items-center gap-6 mb-8">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" />
-                    <AvatarFallback>ИП</AvatarFallback>
-                  </Avatar>
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl font-bold text-white">
+                    ИП
+                  </div>
                   <div>
                     <h2 className="text-2xl font-bold">Иван Петров</h2>
                     <p className="text-muted-foreground">ivan.petrov@example.com</p>
                   </div>
                 </div>
-                <Separator className="my-6" />
-                <div className="space-y-4">
+                <div className="border-t pt-6 space-y-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Телефон</label>
                     <p className="text-lg">+7 (999) 123-45-67</p>
@@ -462,16 +469,8 @@ const Index = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="favorites" className="animate-fade-in">
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <Icon name="Heart" className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Избранное пусто</h3>
-              <p className="text-muted-foreground">Добавьте товары в избранное, чтобы не потерять их</p>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </main>
     </div>
   );
